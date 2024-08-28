@@ -66,6 +66,50 @@ String getBuildStatus(String commitId) {
 }
 
 
+*Jenkins Post action 추가 함수
+    post {
+        success {
+            script {
+                withCredentials([usernamePassword(credentialsId: 'bitbucket', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh """
+                    curl -v -u ${USERNAME}:${PASSWORD} -X POST -H "Content-Type: application/json" -d '{
+                        "state": "SUCCESSFUL",
+                        "key": "${params.PROJECT_KEY}/${params.REPOSITORY_SLUG}/${params.BRANCH_NAME}/codemind",
+                        "name": "${params.PROJECT_KEY}/${params.REPOSITORY_SLUG}/${params.BRANCH_NAME}/codemind",
+                        "url": "${env.BUILD_URL}",
+                        "description": "Codemind Build successful",
+                        "logUrl": "${env.BUILD_URL}console"
+                    }' http://sfmi-bitbucket.samsungfire.com/rest/build-status/1.0/commits/${params.COMMITS_ID}
+                    """
+                }
+            }
+        }
+        failure {
+            script {
+                withCredentials([usernamePassword(credentialsId: 'bitbucket', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh """
+                    curl -v -u ${USERNAME}:${PASSWORD} -X POST -H "Content-Type: application/json" -d '{
+                        "state": "FAILED",
+                        "key": "${params.PROJECT_KEY}/${params.REPOSITORY_SLUG}/${params.BRANCH_NAME}/codemind",
+                        "name": "${params.PROJECT_KEY}/${params.REPOSITORY_SLUG}/${params.BRANCH_NAME}/codemind",
+                        "url": "${env.BUILD_URL}",
+                        "description": "Codemind Build failed",
+                        "logUrl": "${env.BUILD_URL}console"
+                    }' http://sfmi-bitbucket.samsungfire.com/rest/build-status/1.0/commits/${params.COMMITS_ID}
+                    """
+                }
+            }
+        }
+    }
+
+
+
+* Jenkins Controller 추가 부분
+[key: 'PR_COMMITS_ID', value: '$.pullRequest.fromRef.latestCommit']
+
+
+
+
 
 3. 적용이 정상적인지 확인
 
