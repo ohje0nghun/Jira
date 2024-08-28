@@ -1,0 +1,37 @@
+* Merge Check 기능을 통한 PR 관리
+
+- 생성된 PR에 대해서 Merged를 진행하기 위해서는 한명 이상의 reviewer에 승인이 필요하도록 제약 설정
+- PR 생성 시 제약을 거는 부분은 현재 직접적인 기능이 없는 것으로 확인
+
+
+  구성 내용
+
+1. script runner에 merge check 탭 클릭 후 생성
+
+2. 적용 repo 범위 설정 후 스크립트 작성
+
+import com.atlassian.bitbucket.hook.repository.RepositoryHookResult
+import com.atlassian.bitbucket.pull.PullRequestService
+import com.atlassian.bitbucket.pull.PullRequestParticipantStatus
+import com.atlassian.sal.api.component.ComponentLocator
+
+def pullRequestService = ComponentLocator.getComponent(PullRequestService)
+def pullRequest = pullRequestService.getById(mergeRequest.pullRequest.toRef.repository.id, mergeRequest.pullRequest.id)
+
+// 리뷰어 상태 확인 (최소 1명의 승인된 리뷰어 필요)
+def approvedReviewers = pullRequest.reviewers.findAll {
+    it.status == PullRequestParticipantStatus.APPROVED
+}
+
+if (approvedReviewers.size() < 1) {
+    return RepositoryHookResult.rejected("Not enough reviewers",
+        "You need at least 1 approved reviewer to merge this pull request.")
+}
+
+// 기본적인 Gitflow 체크 로직
+// 여기에 기존 예제 코드의 Gitflow 체크 로직을 추가하여 함께 사용
+
+
+3. 적용 확인
+
+  
