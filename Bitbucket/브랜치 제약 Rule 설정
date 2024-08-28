@@ -1,1 +1,48 @@
+* 브랜치 명명 규칙 제약
+
+- 현재 feature/SR-${NUMBER} 형식으로 브랜치를 생성하지 않으면 제약을 두도록 설정
+- Bitbucket Scripts Runner 기능에 Pre-Check 스크립트 기능을 활용
+
+
+구성 내용
+
+1. Sprint Runner Addon 기능이 정상적으로 설치되었는지 확인
+
+2. Pre hooks을 클릭 후 create 버튼 입력
+
+3. 적용할 대상 및 스크립트 작성
+
+import com.atlassian.bitbucket.repository.Repository
+import com.atlassian.bitbucket.hook.repository.RepositoryHookRequest
+import com.atlassian.bitbucket.hook.repository.RepositoryHookResult
+import com.atlassian.sal.api.component.ComponentLocator
+import com.atlassian.bitbucket.repository.RefService
+
+def refService = ComponentLocator.getComponent(RefService)
+def request = hookRequest as RepositoryHookRequest
+
+def newRefs = request.refChanges
+def repo = request.repository  // 변수 이름을 'repo'로 변경
+
+for (refChange in newRefs) {
+    def branchName = refChange.refId
+
+    if (!branchName.matches("refs/heads/feature/SR-\\d+")) {
+        return RepositoryHookResult.rejected(
+            "Invalid Branch Name",
+            "Branch name must start with 'feature/SR-' followed by digits. Example: feature/SR-12345"
+        )
+    }
+}
+
+return RepositoryHookResult.accepted()
+
+
+
+
+4. 적용 후 정상적으로 적용되는지 확인
+
+
+
+
 
