@@ -1,0 +1,76 @@
+- codemind 빌드유무에 따라 merge 승인이 되도록 제약 설정
+- 현재는 빌드에 status 기준으로 설정되어있고 and codemind에 검사 결과 상태도 post형식으로 추가 테스트 필요
+
+
+구성 내용
+
+1. 이전 내용과 동일
+
+2. 스크립트 작성
+import com.atlassian.bitbucket.hook.repository.RepositoryHookResult
+import com.atlassian.bitbucket.pull.PullRequestService
+import com.atlassian.sal.api.component.ComponentLocator
+import groovy.json.JsonSlurper
+
+def pullRequestService = ComponentLocator.getComponent(PullRequestService)
+def pullRequest = pullRequestService.getById(mergeRequest.pullRequest.toRef.repository.id, mergeRequest.pullRequest.id)
+
+if (pullRequest.toRef.displayId == 'develop') {
+    if (pullRequest.fromRef.displayId.startsWith('feature/')) {
+        // 빌드 상태를 확인
+        def buildStatus = getBuildStatus(pullRequest.fromRef.latestCommit)
+        log.info "Retrieved build status: ${buildStatus}"  // 빌드 상태를 로그에 출력
+        
+        if (buildStatus == null || buildStatus == 'FAILED') {
+            return RepositoryHookResult.rejected(
+                "Merge Check Failed",
+                "코드 검사중 문제가 발견되었습니다. codemind를 확인해주세요."
+            )
+        }
+    }
+}
+
+return RepositoryHookResult.accepted()
+
+// Bitbucket의 빌드 상태를 확인하는 함수
+String getBuildStatus(String commitId) {
+    def bitbucketUrl = "http://sfmi-bitbucket.samsungfire.com/rest/build-status/1.0/commits/${commitId}"
+    def connection = new URL(bitbucketUrl).openConnection()
+    connection.setRequestProperty("Authorization", "Basic " + "devadmin:tkatjdsfmi1!".bytes.encodeBase64().toString())
+    
+    try {
+        def response = connection.inputStream.text
+        def jsonResponse = new JsonSlurper().parseText(response)
+        
+        // JSON 응답에서 'values' 배열 내 각 빌드 상태 객체를 검사합니다.
+        if (jsonResponse instanceof Map && jsonResponse.containsKey('values')) {
+            def buildEntries = jsonResponse.values
+            for (def entry : buildEntries) {
+                def key = entry['key']?.toString()  // 명시적으로 String으로 변환하고 null 체크
+                if (key != null && key.endsWith('/codemind')) {
+                    def state = entry['state'] as String
+                    log.info "Found codemind build state: ${state}"  // 상태를 로그에 출력
+                    return state
+                }
+            }
+            log.error "'codemind' 빌드 상태를 찾지 못했습니다. 응답 내용: ${jsonResponse}"
+            return null
+        } else {
+            log.error "빌드 상태 응답에 'values' 배열이 없습니다. 응답 내용: ${jsonResponse}"
+            return null
+        }
+    } catch (Exception e) {
+        log.error "빌드 상태를 가져오는 중 오류가 발생했습니다: ${e.message}"
+        return null
+    }
+}
+
+
+
+3. 적용이 정상적인지 확인
+
+
+
+
+
+
