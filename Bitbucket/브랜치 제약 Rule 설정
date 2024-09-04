@@ -18,37 +18,46 @@ import com.atlassian.bitbucket.hook.repository.RepositoryHookResult
 import com.atlassian.sal.api.component.ComponentLocator
 import com.atlassian.bitbucket.repository.RefService
 
-def refService = ComponentLocator.getComponent(RefService)
-def request = hookRequest as RepositoryHookRequest
+try {
+    def refService = ComponentLocator.getComponent(RefService)
+    def request = hookRequest as RepositoryHookRequest
 
-def newRefs = request.refChanges
-def repo = request.repository  // 변수 이름을 'repo'로 변경
+    def newRefs = request.refChanges
+    def repo = request.repository  // 변수 이름을 'repo'로 변경
 
-// 브랜치 생성 규칙
-def allowedPatterns = [
-    "refs/heads/feature/.*", 
-    "refs/heads/release/.*", 
-    "refs/heads/hotfix/.*", 
-    "refs/heads/bugfix/.*"
-]
+    // 브랜치 생성 규칙
+    def allowedPatterns = [
+        "refs/heads/feature/.*", 
+        "refs/heads/release/.*", 
+        "refs/heads/hotfix/.*", 
+        "refs/heads/bugfix/.*"
+    ]
 
-for (refChange in newRefs) {
-    def branchName = refChange.refId
+    for (refChange in newRefs) {
+        def branchName = refChange.refId
 
-    // 브랜치 이름이 허용된 패턴 중 하나와 일치하는지 확인
-    def isValid = allowedPatterns.any { pattern ->
-        branchName.matches(pattern)
+        // 브랜치 이름이 허용된 패턴 중 하나와 일치하는지 확인
+        def isValid = allowedPatterns.any { pattern ->
+            branchName.matches(pattern)
+        }
+
+        if (!isValid) {
+            // 규칙에 맞지 않는 브랜치명 처리
+            return RepositoryHookResult.rejected(
+                "브랜치 생성 제한",
+                "브랜치 명명규칙에 따라 생성이 제한됩니다. 브랜치 생성 예시) feature/\${기능명}"
+            )
+        }
     }
 
-    if (!isValid) {
-        return RepositoryHookResult.rejected(
-            "브랜치 생성 제한",
-            "브랜치 명명규칙에 따라 생성이 제한됩니다. 브랜치 생성 예시) feature/\${기능명}"
-        )
-    }
+    // 정상적으로 브랜치 생성된 경우
+    return RepositoryHookResult.accepted()
+
+} catch (Exception e) {
+    // 일반적인 예외 처리
+    return RepositoryHookResult.accepted()
 }
 
-return RepositoryHookResult.accepted()
 
 
 
