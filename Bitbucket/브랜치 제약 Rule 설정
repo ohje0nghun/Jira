@@ -104,12 +104,11 @@ try {
     return RepositoryHookResult.accepted()
 
 } catch (Exception e) {
-    // 예외 발생 시 에러 메시지를 직접 반환
-    return RepositoryHookResult.rejected(
-        "스크립트 오류",
-        "스크립트 실행 중 예외가 발생했습니다: ${e.message}"
-    )
+    // 예외 발생 시 에러 메시지를 기록
+    log.error("Pre Hook Error: ${e.message}", e)
+    return RepositoryHookResult.rejected("에러 발생", "오류가 발생했습니다: ${e.message}")
 }
+
 
 
 
