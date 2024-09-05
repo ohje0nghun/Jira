@@ -17,6 +17,7 @@ import com.atlassian.bitbucket.hook.repository.RepositoryHookRequest
 import com.atlassian.bitbucket.hook.repository.RepositoryHookResult
 import com.atlassian.sal.api.component.ComponentLocator
 import com.atlassian.bitbucket.repository.RefService
+import com.atlassian.bitbucket.command.CommandFailedException
 
 try {
     def refService = ComponentLocator.getComponent(RefService)
@@ -25,7 +26,7 @@ try {
     def newRefs = request.refChanges
     def repo = request.repository  // 변수 이름을 'repo'로 변경
 
-    // 브랜치 생성 규칙
+    // 허용된 브랜치 패턴 정의
     def allowedPatterns = [
         "refs/heads/feature/.*", 
         "refs/heads/release/.*", 
@@ -50,13 +51,20 @@ try {
         }
     }
 
-    // 정상적으로 브랜치 생성된 경우
+    // 정상적으로 브랜치가 생성된 경우
     return RepositoryHookResult.accepted()
 
+} catch (CommandFailedException e) {
+    // 명령어 실패로 인한 예외 처리
+    log.warn("Bitbucket 명령 실패: ${e.message}", e)
+    return RepositoryHookResult.rejected("Bitbucket 명령 실패", "오류가 발생했습니다: ${e.message}")
+
 } catch (Exception e) {
-    // 일반적인 예외 처리
-    return RepositoryHookResult.accepted()
+    // 기타 예외 처리
+    log.error("예상치 못한 오류 발생: ${e.message}", e)
+    return RepositoryHookResult.rejected("오류 발생", "예상치 못한 오류가 발생했습니다: ${e.message}")
 }
+
 
 
 ----
