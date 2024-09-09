@@ -33,8 +33,16 @@ try {
         "refs/heads/bugfix/.*"
     ]
 
+    // develop 브랜치 허용
+    def allowedBranches = ["refs/heads/develop"]
+
     for (refChange in newRefs) {
         def branchName = refChange.refId
+
+        // develop 브랜치는 제약 없이 허용
+        if (allowedBranches.contains(branchName)) {
+            continue  // develop 브랜치일 경우 다음으로 넘어감
+        }
 
         // 브랜치 이름이 허용된 패턴 중 하나와 일치하는지 확인
         def isValid = allowedPatterns.any { pattern ->
@@ -45,7 +53,7 @@ try {
             // 규칙에 맞지 않는 브랜치명 처리
             return RepositoryHookResult.rejected(
                 "브랜치 생성 제한",
-                "브랜치 명명규칙에 따라 생성이 제한됩니다. 브랜치 생성 예시) feature/\${기능명}"
+                "브랜치 명명규칙에 따라 생성이 제한됩니다. 브랜치 생성 예시) feature/{기능명}"
             )
         }
     }
@@ -54,7 +62,7 @@ try {
     return RepositoryHookResult.accepted()
 
 } catch (Exception e) {
-    // 일반적인 예외 처리
+    // 예외 처리
     return RepositoryHookResult.accepted()
 }
 
