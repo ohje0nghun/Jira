@@ -121,6 +121,68 @@ try {
 
 
 
+--
+태그 미적용
+
+import com.atlassian.bitbucket.repository.Repository
+import com.atlassian.bitbucket.hook.repository.RepositoryHookRequest
+import com.atlassian.bitbucket.hook.repository.RepositoryHookResult
+import com.atlassian.sal.api.component.ComponentLocator
+import com.atlassian.bitbucket.repository.RefService
+
+try {
+    def refService = ComponentLocator.getComponent(RefService)
+    def request = hookRequest as RepositoryHookRequest
+
+    def newRefs = request.refChanges
+    def repo = request.repository  // 변수 이름을 'repo'로 변경
+
+    // 브랜치 생성 규칙
+    def allowedPatterns = [
+        "refs/heads/feature/.*", 
+        "refs/heads/release/.*", 
+        "refs/heads/hotfix/.*", 
+        "refs/heads/bugfix/.*"
+    ]
+
+    // develop, main 브랜치 허용
+    def allowedBranches = ["refs/heads/develop", "refs/heads/main"]
+
+    for (refChange in newRefs) {
+        def branchName = refChange.refId
+
+        // 태그 푸시를 무시하도록 설정
+        if (branchName.startsWith("refs/tags/")) {
+            continue  // 태그 생성 시 제약을 적용하지 않음
+        }
+
+        // develop, main 브랜치는 제약 없이 허용
+        if (allowedBranches.contains(branchName)) {
+            continue  // 허용된 브랜치일 경우 다음으로 넘어감
+        }
+
+        // 브랜치 이름이 허용된 패턴 중 하나와 일치하는지 확인
+        def isValid = allowedPatterns.any { pattern ->
+            branchName.matches(pattern)
+        }
+
+        if (!isValid) {
+            // 규칙에 맞지 않는 브랜치명 처리
+            return RepositoryHookResult.rejected(
+                "브랜치 생성 제한",
+                "브랜치 명명규칙에 따라 생성이 제한됩니다. 브랜치 생성 예시: feature/{기능명}"
+            )
+        }
+    }
+
+    // 정상적으로 브랜치 생성된 경우
+    return RepositoryHookResult.accepted()
+
+} catch (Exception e) {
+    // 예외 처리
+    return RepositoryHookResult.accepted()
+}
+
 
 
 
